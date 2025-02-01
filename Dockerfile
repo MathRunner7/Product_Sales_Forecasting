@@ -1,5 +1,5 @@
 # Specify base ikmage for docker container
-FROM python:3.14-rc-bookworm
+FROM python:3.14-rc-slim
 # Sets working directory inside docker container
 WORKDIR /forecasting_dir
 
