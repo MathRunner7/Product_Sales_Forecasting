@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Sales Forecasting</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        #forecastForm {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            width: 200px;
+        }
+        .form-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        #submit-container {
+            align-self: flex-end;
+        }
+    </style>
+</head>
+<body>
+    <h2>Product Sales Forecasting by Ankit Thummar</h2>
+
+    <form id="forecastForm">
+        <!-- Main Category Dropdown -->
+        <div class="form-group">
+            <label for="main_category">Main Category:</label>
+            <select id="main_category" name="main_category" required>
+                <option value="" disabled selected>Select an option</option>
+                <option value="All">All</option>
+                <option value="StoreID">Store ID</option>
+                <option value="StoreType">Store Type</option>
+                <option value="Location">Location</option>
+                <option value="Region">Region</option>
+            </select>
+        </div>
+
+        <!-- Sub Category Dropdown (Populated Dynamically) -->
+        <div class="form-group">
+            <label for="sub_category">Sub Category:</label>
+            <select id="sub_category" name="SubCategory" required>
+                <option value="" disabled selected>Select a main category first</option>
+            </select>
+        </div>
+
+        <!-- Integer Input -->
+        <div class="form-group">
+            <label for="n_steps">Days to forecast (1-104):</label>
+            <input type="number" id="n_steps" name="n_steps" min="1" max="104" required>
+        </div>
+
+        <!-- Submit Button -->
+        <div id="submit-container">
+            <button type="submit">Click to Forecast</button>
+        </div>
+    </form>
+
+    <!-- Result Display -->
+    <h3>Forecasting:</h3>
+    <pre id="response"></pre>
+
+    <!-- Divs for the charts -->
+    <div id="chart1" style="width: 100%; height: 400px;"></div>
+    <div id="chart2" style="width: 100%; height: 400px;"></div>
+
+    <script>
+        document.getElementById('main_category').addEventListener('change', function() {
+            let mainCategory = this.value;
+            let subCategoryDropdown = document.getElementById('sub_category');
+
+            // Clear existing options
+            subCategoryDropdown.innerHTML = '<option value="" disabled selected>Select an option</option>';
+
+            // Fetch new options from Flask backend
+            fetch(`/get_subcategories?main_category=${mainCategory}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(subCategory => {
+                        let option = document.createElement('option');
+                        option.value = subCategory;
+                        option.textContent = subCategory;
+                        subCategoryDropdown.appendChild(option);
+                    });
+                });
+        });
+
+        document.getElementById('forecastForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            let formData = {
+                MainCategory: document.getElementById('main_category').value,
+                SubCategory: document.getElementById('sub_category').value,
+                n_steps: parseInt(document.getElementById('n_steps').value)
+            };
+
+            fetch('/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+            return response.json();
+            })
+            .then(data => {
+                // Display JSON response
+                document.getElementById('response').textContent = JSON.stringify(data, null, 4);
+
+                // ✅ Parse Plotly JSON and Render Charts
+                let orderData = JSON.parse(data.order);
+                let salesData = JSON.parse(data.sales);
+
+                // ✅ Render charts in their respective divs
+                Plotly.newPlot("chart1", orderData.data, orderData.layout);
+                Plotly.newPlot("chart2", salesData.data, salesData.layout);
+            })
+            .catch(error => console.error("Error fetching charts:", error));
+        });
+    </script>
+</body>
+</html>

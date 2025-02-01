@@ -2,31 +2,26 @@
 This is Product Sales Forecasting System
 
 To create and activate virtual environment run following codes in terminal
-1. run the flask app with command `flask --app app run` from terminal
+1. run the flask app with command `flask --app app.py run` from terminal
 
 """
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
+import plotly.graph_objs as go
+import plotly.io as pio
 import pandas as pd
-import numpy as np
 import pickle
 
 # TODO 1: Read all files into Pandas dataframe format
-train = pd.read_csv('database/train_processed.csv')
-test = pd.read_csv('database/test_processed.csv')
-exog_train = pd.read_csv('database/exog_train.csv')
-exog_test = pd.read_csv('database/exog_test.csv')
+X_test_exog = pd.read_pickle('database/X_test_exog.pkl')
 
-overall_order = train.groupby(level=0).agg({'Order':'sum'})
-id_wise_order = pd.crosstab(index=train.index, columns=train.Store_id, values =train.Order, aggfunc='sum')
-store_type_wise_order = pd.crosstab(index=train.index, columns=train.Store_Type, values =train.Order, aggfunc='sum')
-location_wise_order = pd.crosstab(index=train.index, columns=train.Location_Type, values =train.Order, aggfunc='sum')
-region_wise_order = pd.crosstab(index=train.index, columns=train.Region_Code, values =train.Order, aggfunc='sum')
-
-overall_sales = train.groupby(level=0).agg({'Order':'sum'})
-id_wise_sales = pd.crosstab(index=train.index, columns=train.Store_id, values =train.Sales, aggfunc='sum')
-store_type_wise_sales = pd.crosstab(index=train.index, columns=train.Store_Type, values =train.Sales, aggfunc='sum')
-location_wise_sales = pd.crosstab(index=train.index, columns=train.Location_Type, values =train.Sales, aggfunc='sum')
-region_wise_sales = pd.crosstab(index=train.index, columns=train.Region_Code, values =train.Sales, aggfunc='sum')
+# Data for SubCategories based on Main Category selection
+SUB_CATEGORIES = {
+    "All": ['All'],
+    "StoreID": [i for i in range(1,367)],
+    "StoreType": ["S1", "S2", "S3", "S4"],
+    "Location": ["L1", "L2", "L3", "L4", "L5"],
+    "Region": ["R1", "R2", "R3", "R4"]
+}
 
 # TODO 2 Configure Flask App
 app = Flask(__name__)
@@ -35,10 +30,17 @@ app = Flask(__name__)
 # Welcome point
 @app.route('/') # Homepage
 def home():
-    return 'Product Sales Forecasting by Ankit Thummar'
+    return render_template('home.html')
+
+@app.route('/get_subcategories')
+def sub_categories():
+    """Returns subcategories based on the selected main category."""
+    main_category = request.args.get("main_category")
+    subcategories = SUB_CATEGORIES.get(main_category, [])
+    return jsonify(subcategories)
 
 # Forecasting
-@app.route('/forecast', methods=['GET', 'POST'])
+@app.route('/submit', methods=['GET', 'POST'])
 def forecast():
     # TODO 3: Return information for GET request
     if request.method=='GET':
@@ -59,16 +61,31 @@ def forecast():
             :type typ: str Any one from (Sales, Order)
             :type n: integer
             """
-            pkl_file = category + sub + typ + ".pkl"
+            # Define model pickle file path and load the model
+            pkl_file = 'models/' + sub.lower() + '_' + typ.lower() + ".pkl"
             with open(pkl_file, 'rb') as file:
                 model = pickle.load(file)
-            result = model.forecast(n_steps=n, exog=exog_test)
-            return result
+
+            # Define database pickle file path and load data
+            split_at = 413
+            df = pd.read_pickle('database/'+typ.lower()+'.pkl')[[sub]]
+            test = df.iloc[split_at:n+split_at]
+            exog = pd.read_pickle('database/X_test_exog.pkl')[:n]
+            df = df.iloc[split_at-10:split_at]
+            test['pred'] = model.forecast(steps=n, exog=exog)
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=df.index, y=df[sub], name='Train values'))
+            fig.add_trace(go.Scatter(x=test.index, y=test[sub], name='Test values'))
+            fig.add_trace(go.Scatter(x=test.index, y=test['pred'], name='Forecasting'))
+            fig.update_layout(title_text=f'Forecasting of {typ} for {sub}',
+                              title_x=0.5,title_y=0.85, legend_x=0)
+            return pio.to_json(fig)
 
         # Fetch Query point
-        main_category = request.get_json()['For']
+        main_category = request.get_json()['MainCategory']
         sub_category = request.get_json()['SubCategory']
-        forecast_type = request.get_json()['ForecastType']
         n_steps = request.get_json()['n_steps']
-        output = forecasting(main_category, sub_category, forecast_type, n_steps)
-        return jsonify({'Forecast':output})
+
+        order_forecast = forecasting(main_category, sub_category, 'order', n_steps)
+        sales_forecast = forecasting(main_category, sub_category, 'sales', n_steps)
+        return jsonify({'order':order_forecast, 'sales':sales_forecast})
