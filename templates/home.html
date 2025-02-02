@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Product Sales Forecasting</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -39,7 +40,7 @@
             <select id="main_category" name="main_category" required>
                 <option value="" disabled selected>Select an option</option>
                 <option value="All">All</option>
-                <option value="StoreID">Store ID</option>
+                <!--<option value="StoreID">Store ID</option> -->
                 <option value="StoreType">Store Type</option>
                 <option value="Location">Location</option>
                 <option value="Region">Region</option>
@@ -117,7 +118,7 @@
             })
             .then(data => {
                 // Display JSON response
-                document.getElementById('response').textContent = JSON.stringify(data, null, 4);
+                //document.getElementById('response').textContent = JSON.stringify(data, null, 4);
 
                 // ✅ Parse Plotly JSON and Render Charts
                 let orderData = JSON.parse(data.order);

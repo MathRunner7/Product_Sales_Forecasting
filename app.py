@@ -9,7 +9,7 @@ from flask import Flask, request, jsonify, render_template
 import plotly.graph_objs as go
 import plotly.io as pio
 import pandas as pd
-import pickle
+import cloudpickle as pickle
 
 # TODO 1: Read all files into Pandas dataframe format
 X_test_exog = pd.read_pickle('database/X_test_exog.pkl')
@@ -17,7 +17,7 @@ X_test_exog = pd.read_pickle('database/X_test_exog.pkl')
 # Data for SubCategories based on Main Category selection
 SUB_CATEGORIES = {
     "All": ['All'],
-    "StoreID": [i for i in range(1,367)],
+    "StoreID": [i for i in range(1,366)],
     "StoreType": ["S1", "S2", "S3", "S4"],
     "Location": ["L1", "L2", "L3", "L4", "L5"],
     "Region": ["R1", "R2", "R3", "R4"]
@@ -71,7 +71,7 @@ def forecast():
             df = pd.read_pickle('database/'+typ.lower()+'.pkl')[[sub]]
             test = df.iloc[split_at:n+split_at]
             exog = pd.read_pickle('database/X_test_exog.pkl')[:n]
-            df = df.iloc[split_at-10:split_at]
+            df = df.iloc[split_at-60:split_at]
             test['pred'] = model.forecast(steps=n, exog=exog)
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=df.index, y=df[sub], name='Train values'))
