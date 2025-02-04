@@ -24,8 +24,9 @@ WORKDIR /forecasting_dir
 # Below lines ensures that pip is upgraded to latest version
 RUN python -m pip install --upgrade pip
 RUN pip install --upgrade pip setuptools setuptools_scm wheel
-COPY requirements.txt requirements.txt
+
 # Run requirements.txt recursively to install all required libraries
+COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 # Copy entire project folder from local machine to container
