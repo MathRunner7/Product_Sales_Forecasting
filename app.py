@@ -63,6 +63,10 @@ def forecast():
             """
             # Define model pickle file path and load the model
             pkl_file = 'models/' + sub.lower() + '_' + typ.lower() + ".pkl"
+
+            if category == 'StoreID':
+                sub = int(sub)
+
             with open(pkl_file, 'rb') as file:
                 model = pickle.load(file)
 
@@ -77,7 +81,7 @@ def forecast():
             fig.add_trace(go.Scatter(x=df.index, y=df[sub], name='Train values'))
             fig.add_trace(go.Scatter(x=test.index, y=test[sub], name='Test values'))
             fig.add_trace(go.Scatter(x=test.index, y=test['pred'], name='Forecasting'))
-            fig.update_layout(title_text=f'Forecasting of {typ} for {sub}',
+            fig.update_layout(title_text=f'Forecasting of {typ} for {category} {sub}',
                               title_x=0.5,title_y=0.85, legend_x=0)
             return pio.to_json(fig)
 
